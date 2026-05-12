@@ -5,9 +5,6 @@ import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
-/**
- * InvoiceDAO - Xử lý logic xuất hóa đơn chuyển khoản ra file .txt
- */
 public class InvoiceDAO {
 
     private static final String INVOICE_DIR = "invoices/";
@@ -15,23 +12,18 @@ public class InvoiceDAO {
     private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
     private static final SimpleDateFormat FILE_DATE_FORMAT = new SimpleDateFormat("yyyyMMdd_HHmmss");
 
-    // ==================== MODEL NỘI BỘ ====================
-
-    /**
-     * Lưu thông tin hóa đơn chuyển khoản
-     */
     public static class InvoiceData {
-        public String transactionId;       // Mã giao dịch
-        public String senderAccountNo;    // Số tài khoản người gửi
-        public String senderName;         // Tên người gửi
-        public String receiverAccountNo;  // Số tài khoản người nhận
-        public String receiverName;       // Tên người nhận
-        public double amount;             // Số tiền chuyển
-        public String content;            // Nội dung chuyển khoản
-        public double balanceBefore;      // Số dư trước giao dịch
-        public double balanceAfter;       // Số dư sau giao dịch
-        public Date transactionTime;      // Thời gian giao dịch
-        public String status;             // Trạng thái: "THÀNH CÔNG" / "THẤT BẠI"
+        public String transactionId;     
+        public String senderAccountNo;   
+        public String senderName;
+        public String receiverAccountNo; 
+        public String receiverName;       
+        public double amount;             
+        public String content;            
+        public double balanceBefore;     
+        public double balanceAfter;       
+        public Date transactionTime;      
+        public String status;             
 
         public InvoiceData() {
             this.transactionTime = new Date();
@@ -39,12 +31,6 @@ public class InvoiceDAO {
         }
     }
 
-    // ==================== PHƯƠNG THỨC CHÍNH ====================
-
-    /**
-     * Xuất hóa đơn ra file .txt
-     * Trả về đường dẫn file đã tạo, hoặc null nếu thất bại
-     */
     public String exportInvoiceToTxt(InvoiceData data) {
         ensureInvoiceDirectory();
 
@@ -65,9 +51,6 @@ public class InvoiceDAO {
         }
     }
 
-    /**
-     * Xây dựng nội dung hóa đơn dạng text
-     */
     public String buildInvoiceContent(InvoiceData data) {
         StringBuilder sb = new StringBuilder();
 
@@ -79,7 +62,6 @@ public class InvoiceDAO {
         sb.append(center("HÓA ĐƠN CHUYỂN KHOẢN NỘI BỘ", 55)).append("\n");
         sb.append(line).append("\n\n");
 
-        // Mã giao dịch & thời gian
         sb.append(String.format("%-25s: %s%n", "Mã giao dịch", safe(data.transactionId)));
         sb.append(String.format("%-25s: %s%n", "Thời gian",
                 data.transactionTime != null ? DATE_FORMAT.format(data.transactionTime) : "N/A"));
@@ -120,16 +102,10 @@ public class InvoiceDAO {
         return sb.toString();
     }
 
-    /**
-     * In hóa đơn ra console (dùng để preview hoặc debug)
-     */
     public void printInvoiceToConsole(InvoiceData data) {
         System.out.println(buildInvoiceContent(data));
     }
 
-    // ==================== TIỆN ÍCH ====================
-
-    /** Tạo tên file theo mã GD và thời gian */
     private String generateFileName(InvoiceData data) {
         String timestamp = FILE_DATE_FORMAT.format(
                 data.transactionTime != null ? data.transactionTime : new Date());
@@ -137,7 +113,6 @@ public class InvoiceDAO {
         return "HoaDon_" + txId + "_" + timestamp + ".txt";
     }
 
-    /** Tạo thư mục lưu hóa đơn nếu chưa tồn tại */
     private void ensureInvoiceDirectory() {
         File dir = new File(INVOICE_DIR);
         if (!dir.exists()) {
@@ -145,7 +120,6 @@ public class InvoiceDAO {
         }
     }
 
-    /** Căn giữa chuỗi trong width ký tự */
     private String center(String text, int width) {
         if (text == null) return "";
         int pad = (width - text.length()) / 2;
@@ -153,7 +127,6 @@ public class InvoiceDAO {
         return " ".repeat(pad) + text;
     }
 
-    /** Trả về chuỗi an toàn (tránh null) */
     private String safe(String s) {
         return s != null ? s : "";
     }
