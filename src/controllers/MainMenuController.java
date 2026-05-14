@@ -2,7 +2,6 @@
 package controllers;
 
 import views.MainMenuView;
-import views.TransactionView;
 import views.WithdrawView;
 
 import javax.swing.*;
@@ -53,20 +52,39 @@ public class MainMenuController {
             transferFrame.setResizable(false);
             transferFrame.add(transferView);
 
-            // Khi cửa sổ chuyển khoản bị đóng, quay trở lại menu chính
-            transferFrame.addWindowListener(new java.awt.event.WindowAdapter() {
+    // ── 3. CHUYỂN KHOẢN LIÊN NGÂN HÀNG ───────────────────────────────────────
+    private void wireInterbankTransferButton() {
+        view.addInterbankTransferListener(e -> {
+            String accountNumber = utils.SessionManager.getCurrentCard().getAccountNumber();
+
+            // Khởi tạo View và Controller cho chức năng Liên ngân hàng
+            InterbankTransferView interbankPanel = new InterbankTransferView(accountNumber);
+            new InterbankTransferController(interbankPanel);
+
+            // Tạo vỏ bọc JFrame
+            JFrame frame = new JFrame("Chuyển khoản liên ngân hàng — ABC Bank");
+            frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+            frame.setSize(900, 540);
+            frame.setLocationRelativeTo(null);
+            frame.setResizable(false);
+            frame.add(interbankPanel);
+
+            // Bắt sự kiện: Khi đóng cửa sổ thì quay về Menu chính
+            frame.addWindowListener(new WindowAdapter() {
                 @Override
-                public void windowClosing(java.awt.event.WindowEvent e) {
-                    // Hiển thị lại menu chính nếu người dùng tắt cửa sổ này
+                public void windowClosing(WindowEvent e) {
                     view.setVisible(true);
                 }
             });
 
             view.setVisible(false);
+
+            view.setVisible(false); // Ẩn Menu
+            frame.setVisible(true); // Hiện tính năng
         });
     }
 
-    // ── VẤN TIN SỐ DƯ ───────────────────────────────────────────────────────
+    // ── 4. VẤN TIN SỐ DƯ ─────────────────────────────────────────────────────
     private void wireBalanceButton() {
         view.addBalanceListener(e -> {
 
@@ -89,7 +107,7 @@ public class MainMenuController {
     // ── ĐỔI MÃ PIN ──────────────────────────────────────────────────────────
     private void wireChangePinButton() {
         view.addChangePinListener(e -> {
-
+            // Việc cần làm: Triển khai ChangePinView + ChangePinController
             JOptionPane.showMessageDialog(view,
                     "Tính năng đổi mã PIN đang được phát triển.",
                     "Thông báo", JOptionPane.INFORMATION_MESSAGE);
@@ -99,12 +117,10 @@ public class MainMenuController {
     // ── IN SAO KÊ ────────────────────────────────────────────────────────────
     private void wireHistoryButton() {
         view.addTransactionHistoryListener(e -> {
-
+            // Việc cần làm: Triển khai TransactionHistoryView + Controller
             JOptionPane.showMessageDialog(view,
                     "Tính năng in sao kê đang được phát triển.",
                     "Thông báo", JOptionPane.INFORMATION_MESSAGE);
         });
     }
-
-
 }
