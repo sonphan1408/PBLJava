@@ -1,135 +1,131 @@
-package  controllers;
+package controllers;
 
-import DAO.AccountDAO;
-import DAO.ATMDAO;
-import DAO.TransactionDAO;
-import models.Account;
-import models.ATM;
-import models.Transaction;
-import services.CashDispenserService;
+import DAO.WithdrawDAO;
+import DAO.WithdrawDAO.WithdrawResult;
 import utils.SessionManager;
 import views.MainMenuView;
 import views.WithdrawView;
+import utils.DBConnection;
 
 import javax.swing.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
+import java.text.DecimalFormat;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 
 public class WithdrawController {
-    private WithdrawView view;
-    private AccountDAO accountDAO;
-    private ATMDAO atmDAO;
-    private TransactionDAO transactionDAO;
-    private CashDispenserService cashDispenserService;
 
-    private final String CURRENT_ATM_ID = "ATM001";
+    private static final DecimalFormat MONEY_FMT = new DecimalFormat("#,###");
+    private final WithdrawView view;
+    private final WithdrawDAO withdrawDAO = new WithdrawDAO(); // Gọi DAO
 
     public WithdrawController(WithdrawView view) {
         this.view = view;
-        this.accountDAO = new AccountDAO();
-        this.atmDAO = new ATMDAO();
-        this.transactionDAO = new TransactionDAO();
-        this.cashDispenserService = new CashDispenserService();
-
-        // Gắn sự kiện cho các nút
-        this.view.addAmountListener(new PresetAmountListener());
-        this.view.addOtherAmountListener(new OtherAmountListener());
-        this.view.addCancelListener(e -> returnToMainMenu());
-
-        // Gọi hàm load số dư lên màn hình ngay khi mở form
+        wireButtonListeners();
         loadCurrentBalance();
     }
 
-    // --- HÀM MỚI: Lấy số dư và hiển thị ---
+    private void wireButtonListeners() {
+        long[] presets = {500_000L, 1_000_000L, 2_000_000L, 5_000_000L};
+        view.setPresetAmounts(presets);
+
+        view.addPresetAmountListener(e -> {
+            Long amount = (Long) ((JButton) e.getSource()).getClientProperty("amount");
+            if (amount != null) handleWithdrawRequest(amount.doubleValue());
+        });
+
+        view.addOtherAmountListener(e -> {
+            String input = view.promptCustomAmount();
+            if (input == null || input.isBlank()) return;
+            try {
+                handleWithdrawRequest(Double.parseDouble(input.trim().replaceAll("[.,\\s]", "")));
+            } catch (NumberFormatException ex) {
+                view.showMessage("Vui lòng chỉ nhập số nguyên!");
+            }
+        });
+
+        view.addCancelListener(e -> returnToMainMenu());
+    }
+
     private void loadCurrentBalance() {
-        String accountNumber = SessionManager.getCurrentCard().getAccountNumber();
-        Account account = accountDAO.getAccountByNumber(accountNumber);
-        if (account != null) {
-            // Định dạng số tiền có dấu phẩy phân cách hàng nghìn
-            String formattedBalance = String.format("%,.0f VNĐ", account.getBalance());
-            view.setBalance(formattedBalance);
-        } else {
-            view.setBalance("Lỗi không tải được số dư");
+        String accountNo = SessionManager.getCurrentCard().getAccountNumber();
+        new SwingWorker<String, Void>() {
+            @Override
+            protected String doInBackground() throws Exception {
+                // Có thể dời luôn đoạn SELECT này vào AccountDAO cho triệt để
+                try (Connection conn = DBConnection.getConnection();
+                     PreparedStatement ps = conn.prepareStatement("SELECT Balance FROM Accounts WHERE AccountNumber = ?")) {
+                    ps.setString(1, accountNo);
+                    try (ResultSet rs = ps.executeQuery()) {
+                        return rs.next() ? MONEY_FMT.format(rs.getDouble("Balance")) : null;
+                    }
+                }
+            }
+            @Override
+            protected void done() {
+                try {
+                    String balance = get();
+                    view.setBalance(balance != null ? balance + " VNĐ" : "Lỗi đọc số dư");
+                } catch (Exception e) {
+                    view.setBalance("Lỗi kết nối CSDL");
+                }
+            }
+        }.execute();
+    }
+
+    private void handleWithdrawRequest(double amount) {
+        if (amount <= 0 || amount % 50_000 != 0) {
+            view.showMessage("Số tiền không hợp lệ!\nVui lòng nhập bội số của 50.000 VNĐ.");
+            return;
         }
+
+        int confirm = JOptionPane.showConfirmDialog(view,
+                String.format("Xác nhận rút %s VNĐ?", MONEY_FMT.format(amount)),
+                "Xác nhận giao dịch", JOptionPane.YES_NO_OPTION);
+        if (confirm != JOptionPane.YES_OPTION) return;
+
+        view.setAllButtonsEnabled(false);
+        view.setStatus("Đang xử lý...");
+
+        new SwingWorker<WithdrawResult, Void>() {
+            @Override
+            protected WithdrawResult doInBackground() {
+                // Gọi DAO xử lý DB
+                String accountNo = SessionManager.getCurrentCard().getAccountNumber();
+                return withdrawDAO.executeWithdrawal(accountNo, amount);
+            }
+
+            @Override
+            protected void done() {
+                view.setAllButtonsEnabled(true);
+                view.setStatus("");
+                try {
+                    WithdrawResult result = get();
+                    if (result.success) {
+                        showSuccessReceipt(result);
+                        returnToMainMenu();
+                    } else {
+                        view.showMessage(result.errorMessage);
+                    }
+                } catch (Exception e) {
+                    view.showMessage("Lỗi hệ thống: " + e.getMessage());
+                }
+            }
+        }.execute();
+    }
+
+    private void showSuccessReceipt(WithdrawResult result) {
+        String msg = String.format("✔ Giao dịch thành công!\n\nChi tiết tiền nhận:\n%s\n\nSố dư sau giao dịch: %s VNĐ",
+                result.dispense.buildNoteBreakdown(), MONEY_FMT.format(result.newBalance));
+        JOptionPane.showMessageDialog(view, msg, "Thành công", JOptionPane.INFORMATION_MESSAGE);
     }
 
     private void returnToMainMenu() {
         view.dispose();
-        MainMenuView mainMenuView = new MainMenuView();
-         new controllers.MainMenuController(mainMenuView);// Chú ý: Nhớ gọi lại MainMenuController như đã fix lúc nãy
-        mainMenuView.setVisible(true);
-    }
-
-    private void processWithdrawal(double amount) {
-        if (amount <= 0 || amount % 50000 != 0) {
-            view.showMessage("Số tiền rút phải ít nhất là  50.000 VNĐ!");
-            return;
-        }
-
-        String accountNumber = SessionManager.getCurrentCard().getAccountNumber();
-        Account account = accountDAO.getAccountByNumber(accountNumber);
-
-        if (account.getBalance() < amount + 50000) {
-            view.showMessage("Số dư trong tài khoản không đủ để thực hiện giao dịch!");
-            return;
-        }
-
-        ATM atm = atmDAO.getATMById(CURRENT_ATM_ID);
-        if (!cashDispenserService.calculateAndDispense(atm, amount)) {
-            view.showMessage("Máy ATM hiện tại không đủ cơ cấu tiền mệnh giá phù hợp. Vui lòng nhập số khác!");
-            return;
-        }
-
-        double newBalance = account.getBalance() - amount;
-        boolean isUpdatedAcc = accountDAO.updateBalance(accountNumber, newBalance);
-        boolean isUpdatedATM = atmDAO.updateATMCash(atm);
-
-        if (isUpdatedAcc && isUpdatedATM) {
-            Transaction trans = new Transaction(
-                    0, 1, accountNumber, null, null, CURRENT_ATM_ID,
-                    amount, account.getBalance(), newBalance,
-                    "Rút tiền mặt tại ATM", "Success", null
-            );
-            transactionDAO.logTransaction(trans);
-
-            view.showMessage("Giao dịch thành công! Vui lòng nhận tiền và thẻ.");
-            returnToMainMenu();
-        } else {
-            view.showMessage("Lỗi hệ thống trong quá trình xử lý giao dịch!");
-        }
-    }
-
-    class PresetAmountListener implements ActionListener {
-        @Override
-        public void actionPerformed(ActionEvent e) {
-            JButton source = (JButton) e.getSource();
-            double amount = 0;
-            switch (source.getText()) {
-                case "500.000 VNĐ": amount = 500000; break;
-                case "1.000.000 VNĐ": amount = 1000000; break;
-                case "2.000.000 VNĐ": amount = 2000000; break;
-                case "5.000.000 VNĐ": amount = 5000000; break;
-            }
-
-            int confirm = JOptionPane.showConfirmDialog(view, "Xác nhận rút " + String.format("%,.0f VNĐ", amount) + "?", "Xác nhận", JOptionPane.YES_NO_OPTION);
-            if (confirm == JOptionPane.YES_OPTION) {
-                processWithdrawal(amount);
-            }
-        }
-    }
-
-    class OtherAmountListener implements ActionListener {
-        @Override
-        public void actionPerformed(ActionEvent e) {
-            String input = view.promptCustomAmount();
-            if (input != null && !input.isEmpty()) {
-                try {
-                    double amount = Double.parseDouble(input);
-                    processWithdrawal(amount);
-                } catch (NumberFormatException ex) {
-                    view.showMessage("Vui lòng chỉ nhập số!");
-                }
-            }
-        }
+        SwingUtilities.invokeLater(() -> {
+            MainMenuView mainView = new MainMenuView();
+            new MainMenuController(mainView);
+            mainView.setVisible(true);
+        });
     }
 }
