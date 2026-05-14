@@ -109,8 +109,7 @@ public class TransferDAO {
             AccountSnapshot firstAccount  = lockAndReadAccount(conn, firstLockId);
             AccountSnapshot secondAccount = lockAndReadAccount(conn, secondLockId);
 
-            AccountSnapshot sender   = fromAccountId.equals(firstLockId) ? firstAccount : secondAccount;
-            AccountSnapshot receiver = fromAccountId.equals(firstLockId) ? secondAccount : firstAccount;
+            AccountSnapshot sender = fromAccountId.equals(firstLockId) ? firstAccount : secondAccount;
 
             // Kiểm tra số dư của người gửi
             if (sender.balance < amount) {
@@ -176,9 +175,7 @@ public class TransferDAO {
                             TransferException.ErrorCode.ACCOUNT_NOT_FOUND);
                 }
                 AccountSnapshot snap = new AccountSnapshot();
-                snap.accountId = rs.getString("AccountNumber");
-                snap.balance   = rs.getDouble("Balance");
-                snap.status    = rs.getString("Status");
+                snap.balance = rs.getDouble("Balance");
                 return snap;
             }
         }
@@ -230,9 +227,7 @@ public class TransferDAO {
     // =========================================================
 
     private static class AccountSnapshot {
-        String accountId;
         double balance;
-        String status;
     }
 
     private static class DeadlockException extends Exception {
