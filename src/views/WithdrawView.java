@@ -8,7 +8,7 @@ import java.text.DecimalFormat;
 
 public class WithdrawView extends JFrame {
 
-    // ── Constants ────────────────────────────────────────────────────────
+
     private static final DecimalFormat MONEY_FMT = new DecimalFormat("#,###");
     
     private static final Color PRIMARY_COLOR   = new Color(0, 86, 163);
@@ -22,12 +22,12 @@ public class WithdrawView extends JFrame {
     private static final Font INFO_FONT   = new Font("Segoe UI", Font.ITALIC, 14);
     private static final Font BUTTON_FONT = new Font("Segoe UI", Font.BOLD, 15);
 
-    // ── UI Components ────────────────────────────────────────────────────
+
     private JButton btn500k, btn1M, btn2M, btn5M, btnOther, btnCancel;
     private JLabel  lblBalance;
     private JLabel  lblStatus;
 
-    // ── Constructor ──────────────────────────────────────────────────────
+
     public WithdrawView() {
         setTitle("Hệ thống ATM - Rút tiền");
         setSize(550, 480);
@@ -125,10 +125,7 @@ public class WithdrawView extends JFrame {
 
     // ── Controller API ───────────────────────────────────────────────────
     
-    /**
-     * Khởi tạo giá trị cho các nút bấm chọn nhanh.
-     * Lưu giá trị tiền vào properties của nút để Controller lấy ra chính xác.
-     */
+
     public void setPresetAmounts(long[] amounts) {
         JButton[] buttons = {btn500k, btn1M, btn2M, btn5M};
         for (int i = 0; i < buttons.length && i < amounts.length; i++) {

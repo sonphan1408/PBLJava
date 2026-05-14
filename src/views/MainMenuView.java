@@ -7,21 +7,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionListener;
 
-/**
- * =====================================================================
- * MainMenuView — Giao diện Menu Chính (Đã cập nhật)
- * =====================================================================
- * Đã bổ sung thêm nút "CHUYỂN KHOẢN LNH" (Chuyển khoản Liên ngân hàng).
- * Bố cục (Layout) được thiết lập dạng lưới 3x2 để bố trí vừa vặn 6 nút tính năng.
- * Giữ nguyên toàn bộ các phương thức (addWithdrawListener, addTransferListener,...)
- * của phiên bản cũ — chỉ mở rộng thêm hàm addInterbankTransferListener().
- *
- * Sơ đồ bố trí nút bấm:
- * [ RÚT TIỀN ]          [ VẤN TIN SỐ DƯ ]
- * [ CHUYỂN KHOẢN NB ]   [ ĐỔI MÃ PIN ]
- * [ CHUYỂN KHOẢN LNH ]  [ IN SAO KÊ ]
- * [ ĐĂNG XUẤT / RÚT THẺ ] (Trải dài toàn bộ chiều rộng ở dưới cùng)
- */
+
 public class MainMenuView extends JFrame {
 
     private JButton btnWithdraw;
@@ -86,7 +72,7 @@ public class MainMenuView extends JFrame {
         }
         add(menuPanel, BorderLayout.CENTER);
 
-        // ── KHU VỰC DƯỚI: Nút Đăng xuất (Trải dài toàn bộ chiều rộng) ────────
+
         JPanel southPanel = new JPanel(new BorderLayout());
         southPanel.setBorder(BorderFactory.createEmptyBorder(0, 40, 24, 40));
 
@@ -99,7 +85,7 @@ public class MainMenuView extends JFrame {
         southPanel.add(btnLogout, BorderLayout.CENTER);
         add(southPanel, BorderLayout.SOUTH);
 
-        // ── Logic xử lý đăng xuất (Đóng gói trực tiếp trong View) ────────────
+
         btnLogout.addActionListener(e -> {
             int confirm = JOptionPane.showConfirmDialog(
                     this, "Bạn có chắc chắn muốn kết thúc giao dịch và rút thẻ?",
@@ -119,9 +105,7 @@ public class MainMenuView extends JFrame {
         });
     }
 
-    // =====================================================================
-    // CUNG CẤP CỔNG KẾT NỐI (LISTENER) CHO MAIN MENU CONTROLLER
-    // =====================================================================
+
     public void addWithdrawListener(ActionListener l)           { btnWithdraw.addActionListener(l); }
     public void addTransferListener(ActionListener l)           { btnTransfer.addActionListener(l); }
     public void addInterbankTransferListener(ActionListener l)  { btnInterbankTransfer.addActionListener(l); } // MỚI
