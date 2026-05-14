@@ -51,7 +51,7 @@ public class MainMenuView extends JFrame {
         btnTransfer = new JButton("CHUYỂN KHOẢN");
         btnBalance = new JButton("VẤN TIN SỐ DƯ");
         btnChangePin = new JButton("ĐỔI MÃ PIN");
-        btnTransactionHistory = new JButton("IN SAO KÊ");
+        btnTransactionHistory = new JButton("Lịch sử");
         btnLogout = new JButton("ĐĂNG XUẤT / RÚT THẺ");
 
         // Định dạng chung cho các nút
