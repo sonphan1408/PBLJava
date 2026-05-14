@@ -1,35 +1,55 @@
 package views;
 
 import utils.SessionManager;
-import controllers.AuthController; // Nhập để dùng khi đăng xuất quay lại màn hình Login
+import controllers.AuthController;
 
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionListener;
 
+/**
+ * =====================================================================
+ * MainMenuView — Giao diện Menu Chính (Đã cập nhật)
+ * =====================================================================
+ * Đã bổ sung thêm nút "CHUYỂN KHOẢN LNH" (Chuyển khoản Liên ngân hàng).
+ * Bố cục (Layout) được thiết lập dạng lưới 3x2 để bố trí vừa vặn 6 nút tính năng.
+ * Giữ nguyên toàn bộ các phương thức (addWithdrawListener, addTransferListener,...)
+ * của phiên bản cũ — chỉ mở rộng thêm hàm addInterbankTransferListener().
+ *
+ * Sơ đồ bố trí nút bấm:
+ * [ RÚT TIỀN ]          [ VẤN TIN SỐ DƯ ]
+ * [ CHUYỂN KHOẢN NB ]   [ ĐỔI MÃ PIN ]
+ * [ CHUYỂN KHOẢN LNH ]  [ IN SAO KÊ ]
+ * [ ĐĂNG XUẤT / RÚT THẺ ] (Trải dài toàn bộ chiều rộng ở dưới cùng)
+ */
 public class MainMenuView extends JFrame {
+
     private JButton btnWithdraw;
-    private JButton btnTransfer;
+    private JButton btnTransfer;           // Chuyển khoản nội bộ
+    private JButton btnInterbankTransfer;  // MỚI: Chuyển khoản liên ngân hàng
     private JButton btnBalance;
     private JButton btnChangePin;
     private JButton btnTransactionHistory;
     private JButton btnLogout;
 
+    // ── Hàm Khởi tạo (Constructor) ───────────────────────────────────────────
     public MainMenuView() {
-        // Thiết lập JFrame
         setTitle("Hệ thống ATM - Menu Chính");
-        setSize(550, 450);
+        setSize(580, 520);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setLocationRelativeTo(null); // Căn giữa màn hình
+        setLocationRelativeTo(null);
         setResizable(false);
         setLayout(new BorderLayout());
 
-        // --- Phần Header (Hiển thị lời chào và che giấu số thẻ) ---
-        String cardNumber = SessionManager.isLoggedIn() ? SessionManager.getCurrentCard().getCardNumber() : "Khách";
-        String maskedCard = cardNumber.length() >= 4 ? "**** **** **** " + cardNumber.substring(cardNumber.length() - 4) : cardNumber;
+        // ── KHOẢNG TRÊN (Header): Thông tin lời chào & Số thẻ ────────────────
+        String cardNumber = SessionManager.isLoggedIn()
+                ? SessionManager.getCurrentCard().getCardNumber() : "Khách";
+        String maskedCard = cardNumber.length() >= 4
+                ? "**** **** **** " + cardNumber.substring(cardNumber.length() - 4)
+                : cardNumber;
 
         JPanel headerPanel = new JPanel(new GridLayout(2, 1));
-        headerPanel.setBorder(BorderFactory.createEmptyBorder(20, 0, 20, 0));
+        headerPanel.setBorder(BorderFactory.createEmptyBorder(20, 0, 16, 0));
 
         JLabel lblWelcome = new JLabel("XIN CHÀO QUÝ KHÁCH", SwingConstants.CENTER);
         lblWelcome.setFont(new Font("Arial", Font.BOLD, 20));
@@ -42,43 +62,53 @@ public class MainMenuView extends JFrame {
         headerPanel.add(lblCard);
         add(headerPanel, BorderLayout.NORTH);
 
-        // --- Phần Center (Các nút chức năng ATM) ---
-        // Sử dụng GridLayout 3 hàng x 2 cột, khoảng cách các nút là 15px
+        // ── KHU VỰC GIỮA: Các nút chức năng chính (Lưới 3 hàng × 2 cột) ──────
         JPanel menuPanel = new JPanel(new GridLayout(3, 2, 15, 15));
-        menuPanel.setBorder(BorderFactory.createEmptyBorder(10, 40, 30, 40));
+        menuPanel.setBorder(BorderFactory.createEmptyBorder(10, 40, 16, 40));
 
-        btnWithdraw = new JButton("RÚT TIỀN");
-        btnTransfer = new JButton("CHUYỂN KHOẢN");
-        btnBalance = new JButton("VẤN TIN SỐ DƯ");
-        btnChangePin = new JButton("ĐỔI MÃ PIN");
+        btnWithdraw           = new JButton("RÚT TIỀN");
+        btnBalance            = new JButton("VẤN TIN SỐ DƯ");
+        btnTransfer           = new JButton("CHUYỂN KHOẢN NB");
+        btnChangePin          = new JButton("ĐỔI MÃ PIN");
+        btnInterbankTransfer  = new JButton("CHUYỂN KHOẢN LNH");  // Tính năng mới
         btnTransactionHistory = new JButton("IN SAO KÊ");
-        btnLogout = new JButton("ĐĂNG XUẤT / RÚT THẺ");
 
-        // Định dạng chung cho các nút
-        Font btnFont = new Font("Arial", Font.BOLD, 14);
-        JButton[] buttons = {btnWithdraw, btnBalance, btnTransfer, btnChangePin, btnTransactionHistory, btnLogout};
-
-        for (JButton btn : buttons) {
+        Font btnFont = new Font("Arial", Font.BOLD, 13);
+        JButton[] menuButtons = {
+            btnWithdraw, btnBalance,
+            btnTransfer, btnChangePin,
+            btnInterbankTransfer, btnTransactionHistory
+        };
+        for (JButton btn : menuButtons) {
             btn.setFont(btnFont);
-            btn.setFocusPainted(false); // Bỏ viền khi click
+            btn.setFocusPainted(false);
             menuPanel.add(btn);
         }
-
         add(menuPanel, BorderLayout.CENTER);
 
-        // --- Xử lý sự kiện mặc định cho nút Đăng xuất ---
+        // ── KHU VỰC DƯỚI: Nút Đăng xuất (Trải dài toàn bộ chiều rộng) ────────
+        JPanel southPanel = new JPanel(new BorderLayout());
+        southPanel.setBorder(BorderFactory.createEmptyBorder(0, 40, 24, 40));
+
+        btnLogout = new JButton("ĐĂNG XUẤT / RÚT THẺ");
+        btnLogout.setFont(new Font("Arial", Font.BOLD, 13));
+        btnLogout.setFocusPainted(false);
+        btnLogout.setBackground(new Color(200, 60, 60));
+        btnLogout.setForeground(Color.WHITE);
+
+        southPanel.add(btnLogout, BorderLayout.CENTER);
+        add(southPanel, BorderLayout.SOUTH);
+
+        // ── Logic xử lý đăng xuất (Đóng gói trực tiếp trong View) ────────────
         btnLogout.addActionListener(e -> {
             int confirm = JOptionPane.showConfirmDialog(
-                    this,
-                    "Bạn có chắc chắn muốn kết thúc giao dịch và rút thẻ?",
-                    "Xác nhận",
-                    JOptionPane.YES_NO_OPTION
-            );
-
+                    this, "Bạn có chắc chắn muốn kết thúc giao dịch và rút thẻ?",
+                    "Xác nhận", JOptionPane.YES_NO_OPTION);
             if (confirm == JOptionPane.YES_OPTION) {
-                SessionManager.logout(); // Xóa phiên đăng nhập
-                this.dispose(); // Đóng Menu
-
+                // Xóa thông tin phiên đăng nhập
+                SessionManager.logout();
+                this.dispose(); // Đóng menu hiện tại
+                
                 // Mở lại màn hình đăng nhập
                 SwingUtilities.invokeLater(() -> {
                     views.LoginView loginView = new views.LoginView();
@@ -89,25 +119,13 @@ public class MainMenuView extends JFrame {
         });
     }
 
-
-    public void addWithdrawListener(ActionListener listener) {
-        btnWithdraw.addActionListener(listener);
-
-    }
-
-    public void addTransferListener(ActionListener listener) {
-        btnTransfer.addActionListener(listener);
-    }
-
-    public void addBalanceListener(ActionListener listener) {
-        btnBalance.addActionListener(listener);
-    }
-
-    public void addChangePinListener(ActionListener listener) {
-        btnChangePin.addActionListener(listener);
-    }
-
-    public void addTransactionHistoryListener(ActionListener listener) {
-        btnTransactionHistory.addActionListener(listener);
-    }
+    // =====================================================================
+    // CUNG CẤP CỔNG KẾT NỐI (LISTENER) CHO MAIN MENU CONTROLLER
+    // =====================================================================
+    public void addWithdrawListener(ActionListener l)           { btnWithdraw.addActionListener(l); }
+    public void addTransferListener(ActionListener l)           { btnTransfer.addActionListener(l); }
+    public void addInterbankTransferListener(ActionListener l)  { btnInterbankTransfer.addActionListener(l); } // MỚI
+    public void addBalanceListener(ActionListener l)            { btnBalance.addActionListener(l); }
+    public void addChangePinListener(ActionListener l)          { btnChangePin.addActionListener(l); }
+    public void addTransactionHistoryListener(ActionListener l) { btnTransactionHistory.addActionListener(l); }
 }
