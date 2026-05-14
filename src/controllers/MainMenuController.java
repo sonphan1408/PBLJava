@@ -4,6 +4,8 @@ package controllers;
 import views.MainMenuView;
 import views.TransactionView;
 import views.WithdrawView;
+import views.ChangePINView;
+import views.TransactionHistoryView;
 
 import javax.swing.*;
 import java.awt.event.ActionListener;
@@ -89,20 +91,18 @@ public class MainMenuController {
     // ── ĐỔI MÃ PIN ──────────────────────────────────────────────────────────
     private void wireChangePinButton() {
         view.addChangePinListener(e -> {
-
-            JOptionPane.showMessageDialog(view,
-                    "Tính năng đổi mã PIN đang được phát triển.",
-                    "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+            ChangePINView changePinView = new ChangePINView();
+            new ChangePINController(changePinView);
+            changePinView.setVisible(true);
         });
     }
 
     // ── IN SAO KÊ ────────────────────────────────────────────────────────────
     private void wireHistoryButton() {
         view.addTransactionHistoryListener(e -> {
-
-            JOptionPane.showMessageDialog(view,
-                    "Tính năng in sao kê đang được phát triển.",
-                    "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+            TransactionHistoryView historyView = new TransactionHistoryView();
+            new TransactionHistoryController(historyView);
+            historyView.setVisible(true);
         });
     }
 
