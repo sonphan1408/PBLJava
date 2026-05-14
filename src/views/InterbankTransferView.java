@@ -25,7 +25,7 @@ import java.util.List;
  * Tuân thủ tuyệt đối nguyên tắc "View thụ động" (Dumb View) trong MVC:
  * - Giao diện chỉ chứa các thành phần UI và mở ra các cổng Getters/Setters.
  * - KHÔNG chứa logic nghiệp vụ, KHÔNG gọi Database.
- * - Controller sẽ gọi Setters để cập nhật màn hình và dùng Getters để 
+ * - Controller sẽ gọi Setters để cập nhật màn hình và dùng Getters để
  * lấy dữ liệu do người dùng nhập vào.
  */
 public class InterbankTransferView extends JPanel {
@@ -168,13 +168,11 @@ public class InterbankTransferView extends JPanel {
     // PUBLIC API — Controller sẽ gọi các hàm này để giao tiếp với View
     // =====================================================================
 
-    /** Đổ dữ liệu vào Combobox sau khi DAO tải danh sách từ CSDL */
     public void setBankList(List<BankEntry> banks) {
         cmbBank.removeAllItems();
         for (BankEntry b : banks) cmbBank.addItem(b);
     }
 
-    /** Lấy ngân hàng đang được chọn (BankEntry), trả về null nếu danh sách rỗng */
     public BankEntry getSelectedBank() {
         return (BankEntry) cmbBank.getSelectedItem();
     }
@@ -184,7 +182,6 @@ public class InterbankTransferView extends JPanel {
     }
 
     public String getAmountText() {
-        // Tự động loại bỏ dấu chấm/phẩy khi người dùng nhập định dạng tiền
         return txtAmount.getText().trim().replaceAll("[.,\\s]", "");
     }
 
@@ -193,7 +190,6 @@ public class InterbankTransferView extends JPanel {
         return d.isEmpty() ? "Chuyen khoan lien ngan hang" : d;
     }
 
-    // ── Cập nhật hiển thị bên phía Người gửi ──────────────────────────────
     public void setSenderName(String name) {
         lblSenderName.setText(name != null ? name.toUpperCase() : "Không tìm thấy");
     }
@@ -202,7 +198,6 @@ public class InterbankTransferView extends JPanel {
         lblSenderBalance.setText(formattedBalance + " VNĐ");
     }
 
-    // ── Cập nhật hiển thị bên phía Người nhận (Gọi sau khi tra cứu) ───────
     public void setReceiverName(String name) {
         if (name != null) {
             lblReceiverName.setText(name.toUpperCase());
@@ -213,7 +208,6 @@ public class InterbankTransferView extends JPanel {
         }
     }
 
-    /** Đặt lại tên người nhận về mặc định (Được gọi khi người dùng đổi ngân hàng hoặc STK) */
     public void clearReceiverName() {
         lblReceiverName.setText("(Chọn ngân hàng và nhập STK, sau đó bấm Tra cứu)");
         lblReceiverName.setForeground(Color.GRAY);
@@ -223,13 +217,23 @@ public class InterbankTransferView extends JPanel {
     public void showStatus(String message, Color color) {
         lblStatus.setText(message == null || message.isBlank() ? " " : message);
         lblStatus.setForeground(color);
-        // Tạo background mờ (alpha = 18) dựa trên màu chữ để tăng tính thẩm mỹ
-        lblStatus.setBackground(new Color(color.getRed(), color.getGreen(), color.getBlue(), 18));
+
+        // ĐÃ FIX LỖI ĐÈ CHỮ: Pha trộn màu trực tiếp thay vì dùng Alpha (độ trong suốt)
+        // Công thức pha màu nền nhạt đi (tương đương alpha=18) để Swing không bị lỗi render
+        int r = (color.getRed() * 18 + BG.getRed() * 237) / 255;
+        int g = (color.getGreen() * 18 + BG.getGreen() * 237) / 255;
+        int b = (color.getBlue() * 18 + BG.getBlue() * 237) / 255;
+
+        lblStatus.setBackground(new Color(r, g, b));
+
+        // Bắt buộc Swing phải vẽ lại dòng này để xóa sạch bóng mờ cũ
+        lblStatus.repaint();
     }
 
     public void clearStatus() {
         lblStatus.setText(" ");
         lblStatus.setBackground(BG);
+        lblStatus.repaint();
     }
 
     // ── Khóa/Mở khóa nút bấm (Chống lỗi Double-submit) ────────────────────
@@ -240,7 +244,6 @@ public class InterbankTransferView extends JPanel {
         cmbBank.setEnabled(enabled);
     }
 
-    // ── Cung cấp cổng kết nối (Listener) cho Controller ───────────────────
     public void addLookupListener(ActionListener listener) {
         btnLookup.addActionListener(listener);
     }
@@ -253,7 +256,6 @@ public class InterbankTransferView extends JPanel {
         btnCancel.addActionListener(listener);
     }
 
-    /** Tự động xóa tên người nhận nếu người dùng đổi sang ngân hàng khác */
     public void addBankChangeListener(ActionListener listener) {
         cmbBank.addActionListener(listener);
     }
@@ -321,7 +323,6 @@ public class InterbankTransferView extends JPanel {
         return btn;
     }
 
-    // Mở quyền truy cập các màu sắc cố định để Controller có thể tái sử dụng
     public Color colorSuccess() { return SUCCESS; }
     public Color colorDanger()  { return DANGER;  }
     public Color colorWarning() { return WARNING; }

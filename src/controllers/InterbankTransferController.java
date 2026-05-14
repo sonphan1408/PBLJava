@@ -27,7 +27,7 @@ import java.util.logging.Logger;
  * InterbankTransferController — Điều phối Chuyển khoản Liên ngân hàng
  * =====================================================================
  * Đóng vai trò trung gian kết nối InterbankTransferView ↔ InterbankTransferDAO.
- * Sử dụng SwingWorker cho MỌI thao tác truy xuất cơ sở dữ liệu nhằm giữ cho 
+ * Sử dụng SwingWorker cho MỌI thao tác truy xuất cơ sở dữ liệu nhằm giữ cho
  * luồng giao diện (EDT - Event Dispatch Thread) luôn mượt mà, không bị đơ.
  *
  * Vòng đời của một giao dịch hoàn chỉnh:
@@ -104,14 +104,6 @@ public class InterbankTransferController {
         });
     }
 
-    // =====================================================================
-    // KHỞI ĐỘNG: Tải danh sách ngân hàng và thông tin người gửi
-    // =====================================================================
-
-    /**
-     * Tải danh sách ngân hàng từ bảng ExternalBanks và đổ vào JComboBox.
-     * Chạy trên luồng SwingWorker — không làm đơ giao diện người dùng.
-     */
     private void loadBankList() {
         new SwingWorker<List<BankEntry>, Void>() {
             @Override
@@ -124,11 +116,13 @@ public class InterbankTransferController {
                 try {
                     List<BankEntry> banks = get();
                     if (banks.isEmpty()) {
+                        view.clearStatus();
                         view.showStatus("Không tải được danh sách ngân hàng!", view.colorDanger());
                     } else {
                         view.setBankList(banks);
                     }
                 } catch (Exception e) {
+                    view.clearStatus();
                     view.showStatus("Lỗi khi tải danh sách ngân hàng.", view.colorDanger());
                     LOGGER.log(Level.WARNING, "Failed to load bank list", e);
                 }
@@ -136,10 +130,6 @@ public class InterbankTransferController {
         }.execute();
     }
 
-    /**
-     * Tải tên và số dư (đã được định dạng) của người dùng đang đăng nhập.
-     * Chạy trên luồng SwingWorker.
-     */
     private void loadSenderInfo() {
         String accountNo = SessionManager.getCurrentCard().getAccountNumber();
 
@@ -149,15 +139,15 @@ public class InterbankTransferController {
                 try (Connection conn = DBConnection.getConnection();
                      PreparedStatement ps = conn.prepareStatement(
                              "SELECT c.FullName, a.Balance " +
-                             "FROM Accounts a " +
-                             "JOIN Customers c ON a.CustomerID = c.CustomerID " +
-                             "WHERE a.AccountNumber = ?")) {
+                                     "FROM Accounts a " +
+                                     "JOIN Customers c ON a.CustomerID = c.CustomerID " +
+                                     "WHERE a.AccountNumber = ?")) {
                     ps.setString(1, accountNo);
                     try (ResultSet rs = ps.executeQuery()) {
                         if (rs.next()) {
                             return new String[]{
-                                rs.getString("FullName"),
-                                MONEY_FMT.format(rs.getDouble("Balance"))
+                                    rs.getString("FullName"),
+                                    MONEY_FMT.format(rs.getDouble("Balance"))
                             };
                         }
                     }
@@ -180,33 +170,30 @@ public class InterbankTransferController {
         }.execute();
     }
 
-    // =====================================================================
-    // TRA CỨU: Xử lý nút "Tra cứu"
-    // =====================================================================
-
     private void handleLookup() {
-        // ── Xác thực đầu vào nhanh (Trên luồng giao diện — Không gọi DB) ─────
         BankEntry selectedBank = view.getSelectedBank();
         String    accNum       = view.getReceiverAccNum();
 
         if (selectedBank == null) {
+            view.clearStatus();
             view.showStatus("Vui lòng chọn ngân hàng!", view.colorDanger());
             return;
         }
         if (accNum.isEmpty()) {
+            view.clearStatus();
             view.showStatus("Vui lòng nhập số tài khoản người nhận!", view.colorDanger());
             return;
         }
 
-        // ── Chặn việc tự chuyển khoản cho chính mình ngay từ bước tra cứu ───
         String myAccNo = SessionManager.getCurrentCard().getAccountNumber();
         if (accNum.equals(myAccNo) && selectedBank.bankCode.equals("ABC")) {
+            view.clearStatus();
             view.showStatus("Không thể chuyển khoản cho chính mình!", view.colorDanger());
             return;
         }
 
-        // ── Đẩy tác vụ tra cứu DB xuống chạy ngầm (Background) ───────────────
         view.setButtonsEnabled(false);
+        view.clearStatus();
         view.showStatus("Đang tra cứu tài khoản...", view.colorPrimary());
         cachedReceiverName = null; // Xóa bỏ kết quả cũ (nếu có)
 
@@ -227,18 +214,21 @@ public class InterbankTransferController {
                     if (name != null) {
                         cachedReceiverName = name;
                         view.setReceiverName(name);
+                        view.clearStatus();
                         view.showStatus(
                                 "Tìm thấy tài khoản tại " + bankName + ". Vui lòng kiểm tra và nhập số tiền.",
                                 view.colorSuccess());
                     } else {
                         cachedReceiverName = null;
                         view.setReceiverName(null); // Sẽ hiển thị "Không tìm thấy"
+                        view.clearStatus();
                         view.showStatus(
                                 "Không tìm thấy tài khoản " + accNum + " tại " + bankName + "!",
                                 view.colorDanger());
                     }
                 } catch (Exception e) {
                     cachedReceiverName = null;
+                    view.clearStatus();
                     view.showStatus("Lỗi tra cứu: " + e.getMessage(), view.colorDanger());
                     LOGGER.log(Level.WARNING, "Lookup error", e);
                 }
@@ -246,13 +236,9 @@ public class InterbankTransferController {
         }.execute();
     }
 
-    // =====================================================================
-    // CHUYỂN KHOẢN: Xử lý nút "Chuyển khoản"
-    // =====================================================================
-
     private void handleTransfer() {
-        // ── Chốt chặn: Bắt buộc phải tra cứu thành công trước khi chuyển ───
         if (cachedReceiverName == null) {
+            view.clearStatus();
             view.showStatus("Vui lòng tra cứu và xác nhận tài khoản người nhận trước!", view.colorDanger());
             return;
         }
@@ -264,10 +250,12 @@ public class InterbankTransferController {
 
         // ── Xác thực đầu vào (Trên luồng giao diện — Không gọi DB) ────────
         if (selectedBank == null || accNum.isEmpty()) {
+            view.clearStatus();
             view.showStatus("Thông tin người nhận không hợp lệ. Vui lòng tra cứu lại!", view.colorDanger());
             return;
         }
         if (amountStr.isEmpty()) {
+            view.clearStatus();
             view.showStatus("Vui lòng nhập số tiền cần chuyển!", view.colorDanger());
             return;
         }
@@ -276,28 +264,32 @@ public class InterbankTransferController {
         try {
             amount = Double.parseDouble(amountStr);
         } catch (NumberFormatException ex) {
+            view.clearStatus();
             view.showStatus("Số tiền không hợp lệ! Vui lòng chỉ nhập chữ số.", view.colorDanger());
             return;
         }
 
         if (amount <= 0) {
+            view.clearStatus();
             view.showStatus("Số tiền phải lớn hơn 0!", view.colorDanger()); return;
         }
         if (amount % 1000 != 0) {
+            view.clearStatus();
             view.showStatus("Số tiền phải là bội số của 1.000 VNĐ!", view.colorDanger()); return;
         }
         if (amount > 50_000_000) {
+            view.clearStatus();
             view.showStatus("Số tiền tối đa mỗi lần chuyển là 50.000.000 VNĐ!", view.colorDanger()); return;
         }
 
         // ── Hộp thoại xác nhận ────────────────────────────────────────────
         String confirmMsg = String.format(
                 "Xác nhận chuyển khoản liên ngân hàng?\n\n" +
-                "  Ngân hàng nhận : %s\n" +
-                "  Số TK nhận     : %s\n" +
-                "  Tên người nhận : %s\n" +
-                "  Số tiền        : %s VNĐ\n" +
-                "  Nội dung       : %s",
+                        "  Ngân hàng nhận : %s\n" +
+                        "  Số TK nhận     : %s\n" +
+                        "  Tên người nhận : %s\n" +
+                        "  Số tiền        : %s VNĐ\n" +
+                        "  Nội dung       : %s",
                 selectedBank.fullName, accNum,
                 cachedReceiverName.toUpperCase(),
                 MONEY_FMT.format(amount), description);
@@ -307,6 +299,7 @@ public class InterbankTransferController {
 
         // ── Đẩy tác vụ chuyển khoản xuống chạy ngầm (Background thread) ────
         view.setButtonsEnabled(false);
+        view.clearStatus();
         view.showStatus("Đang xử lý giao dịch...", view.colorPrimary());
 
         final double   finalAmount       = amount;
@@ -333,6 +326,7 @@ public class InterbankTransferController {
                     TransferResult result = get();
 
                     if (result.success) {
+                        view.clearStatus();
                         view.showStatus(
                                 "✔ Chuyển khoản thành công! Mã GD: " + result.txId,
                                 view.colorSuccess());
@@ -342,10 +336,12 @@ public class InterbankTransferController {
                         lastInvoice = buildInvoiceData(result);
                         showSuccessReceipt(result);
                     } else {
+                        view.clearStatus();
                         view.showStatus(result.errorMessage, view.colorDanger());
                     }
 
                 } catch (Exception e) {
+                    view.clearStatus();
                     view.showStatus("Lỗi không xác định: " + e.getMessage(), view.colorDanger());
                     LOGGER.log(Level.SEVERE, "Unexpected error in transfer worker", e);
                 }
@@ -360,16 +356,16 @@ public class InterbankTransferController {
     private void showSuccessReceipt(TransferResult result) {
         String receiptText = String.format(
                 "╔══════════════════════════════════════════════╗\n"  +
-                "║       GIAO DỊCH THÀNH CÔNG                   ║\n"  +
-                "╚══════════════════════════════════════════════╝\n\n" +
-                "  Mã giao dịch   : %s\n"   +
-                "  Ngân hàng nhận : %s\n"   +
-                "  Số TK nhận     : %s\n"   +
-                "  Tên người nhận : %s\n\n" +
-                "  Số tiền đã CK  : %s VNĐ\n" +
-                "  Số dư trước GD : %s VNĐ\n" +
-                "  Số dư sau GD   : %s VNĐ\n\n" +
-                "  Nội dung       : %s",
+                        "║       GIAO DỊCH THÀNH CÔNG                   ║\n"  +
+                        "╚══════════════════════════════════════════════╝\n\n" +
+                        "  Mã giao dịch   : %s\n"   +
+                        "  Ngân hàng nhận : %s\n"   +
+                        "  Số TK nhận     : %s\n"   +
+                        "  Tên người nhận : %s\n\n" +
+                        "  Số tiền đã CK  : %s VNĐ\n" +
+                        "  Số dư trước GD : %s VNĐ\n" +
+                        "  Số dư sau GD   : %s VNĐ\n\n" +
+                        "  Nội dung       : %s",
                 result.txId,
                 result.bankName + " (" + result.bankCode + ")",
                 result.externalAccNum,
@@ -420,6 +416,7 @@ public class InterbankTransferController {
                 if (filePath != null) {
                     try {
                         Desktop.getDesktop().open(new File(filePath));
+                        view.clearStatus();
                         view.showStatus("✔ Hóa đơn đã lưu tại: " + filePath, view.colorSuccess());
                     } catch (Exception ex) {
                         view.showMessage("Hóa đơn đã lưu tại:\n" + filePath);

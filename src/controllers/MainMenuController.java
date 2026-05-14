@@ -1,12 +1,14 @@
-// File: src/controllers/MainMenuController.java
 package controllers;
 
+import views.InterbankTransferView;
 import views.MainMenuView;
+import views.TransactionView;
 import views.WithdrawView;
 
 import javax.swing.*;
 import java.awt.event.ActionListener;
-
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 
 public class MainMenuController {
 
@@ -16,14 +18,14 @@ public class MainMenuController {
         this.view = view;
 
         wireWithdrawButton();
-        wireTransferButton();   // SỬA LỖI #1: Đây là dòng code bị thiếu trước đó
+        wireTransferButton();
+        wireInterbankTransferButton(); // ĐÃ FIX: Gọi thêm hàm này để nút Liên ngân hàng hoạt động
         wireBalanceButton();
         wireChangePinButton();
         wireHistoryButton();
-
     }
 
-    // ── RÚT TIỀN ─────────────────────────────────────────────────────────────
+    // ── 1. RÚT TIỀN ─────────────────────────────────────────────────────────────
     private void wireWithdrawButton() {
         view.addWithdrawListener(e -> {
             WithdrawView withdrawView = new WithdrawView();
@@ -33,7 +35,7 @@ public class MainMenuController {
         });
     }
 
-    // ── CHUYỂN KHOẢN ─────────────────────────────────────────────────────────
+    // ── 2. CHUYỂN KHOẢN NỘI BỘ ─────────────────────────────────────────────────
     private void wireTransferButton() {
         view.addTransferListener(e -> {
             String accountNumber = utils.SessionManager.getCurrentCard().getAccountNumber();
@@ -51,6 +53,19 @@ public class MainMenuController {
             transferFrame.setLocationRelativeTo(null);
             transferFrame.setResizable(false);
             transferFrame.add(transferView);
+
+            // ĐÃ FIX LỖI MERGE DƯỚI ĐÂY: Thêm sự kiện đóng cửa sổ và hiển thị frame
+            transferFrame.addWindowListener(new WindowAdapter() {
+                @Override
+                public void windowClosing(WindowEvent e) {
+                    view.setVisible(true); // Hiển thị lại Menu chính khi đóng
+                }
+            });
+
+            view.setVisible(false); // Ẩn Menu chính
+            transferFrame.setVisible(true); // Hiện cửa sổ chuyển khoản
+        }); // <-- ĐÃ FIX: Thêm dấu đóng ngoặc }); bị thiếu
+    }
 
     // ── 3. CHUYỂN KHOẢN LIÊN NGÂN HÀNG ───────────────────────────────────────
     private void wireInterbankTransferButton() {
@@ -77,9 +92,7 @@ public class MainMenuController {
                 }
             });
 
-            view.setVisible(false);
-
-            view.setVisible(false); // Ẩn Menu
+            view.setVisible(false); // Ẩn Menu (Đã xóa dòng lặp thừa)
             frame.setVisible(true); // Hiện tính năng
         });
     }
@@ -87,15 +100,15 @@ public class MainMenuController {
     // ── 4. VẤN TIN SỐ DƯ ─────────────────────────────────────────────────────
     private void wireBalanceButton() {
         view.addBalanceListener(e -> {
-
             String accountNumber = utils.SessionManager.getCurrentCard().getAccountNumber();
             DAO.AccountDAO accountDAO = new DAO.AccountDAO();
             models.Account account = accountDAO.getAccountByNumber(accountNumber);
+
             if (account != null) {
                 java.text.DecimalFormat fmt = new java.text.DecimalFormat("#,###");
                 JOptionPane.showMessageDialog(view,
                         "Số tài khoản: " + accountNumber + "\n" +
-                        "Số dư khả dụng: " + fmt.format(account.getBalance()) + " VNĐ",
+                                "Số dư khả dụng: " + fmt.format(account.getBalance()) + " VNĐ",
                         "Vấn tin số dư", JOptionPane.INFORMATION_MESSAGE);
             } else {
                 JOptionPane.showMessageDialog(view, "Không thể truy vấn số dư!",
@@ -104,20 +117,18 @@ public class MainMenuController {
         });
     }
 
-    // ── ĐỔI MÃ PIN ──────────────────────────────────────────────────────────
+    // ── 5. ĐỔI MÃ PIN ──────────────────────────────────────────────────────────
     private void wireChangePinButton() {
         view.addChangePinListener(e -> {
-            // Việc cần làm: Triển khai ChangePinView + ChangePinController
             JOptionPane.showMessageDialog(view,
                     "Tính năng đổi mã PIN đang được phát triển.",
                     "Thông báo", JOptionPane.INFORMATION_MESSAGE);
         });
     }
 
-    // ── IN SAO KÊ ────────────────────────────────────────────────────────────
+    // ── 6. IN SAO KÊ ──────────────────────────────────────────────────────────
     private void wireHistoryButton() {
         view.addTransactionHistoryListener(e -> {
-            // Việc cần làm: Triển khai TransactionHistoryView + Controller
             JOptionPane.showMessageDialog(view,
                     "Tính năng in sao kê đang được phát triển.",
                     "Thông báo", JOptionPane.INFORMATION_MESSAGE);
