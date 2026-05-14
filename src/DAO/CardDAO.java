@@ -53,4 +53,22 @@ public class CardDAO {
             e.printStackTrace();
         }
     }
+
+    // Cập nhật mã PIN
+    public boolean updatePin(String cardNumber, String newPin) {
+        String query = "UPDATE Cards SET PIN = ? WHERE CardNumber = ?";
+
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(query)) {
+
+            pstmt.setString(1, newPin);
+            pstmt.setString(2, cardNumber);
+            pstmt.executeUpdate();
+            return true;
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
 }

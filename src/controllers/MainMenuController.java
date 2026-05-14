@@ -1,14 +1,15 @@
+// File: src/controllers/MainMenuController.java
 package controllers;
 
-import views.InterbankTransferView;
 import views.MainMenuView;
 import views.TransactionView;
 import views.WithdrawView;
+import views.ChangePINView;
+import views.TransactionHistoryView;
 
 import javax.swing.*;
 import java.awt.event.ActionListener;
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
+
 
 public class MainMenuController {
 
@@ -18,14 +19,14 @@ public class MainMenuController {
         this.view = view;
 
         wireWithdrawButton();
-        wireTransferButton();
-        wireInterbankTransferButton(); // ĐÃ FIX: Gọi thêm hàm này để nút Liên ngân hàng hoạt động
+        wireTransferButton();   // SỬA LỖI #1: Đây là dòng code bị thiếu trước đó
         wireBalanceButton();
         wireChangePinButton();
         wireHistoryButton();
+
     }
 
-    // ── 1. RÚT TIỀN ─────────────────────────────────────────────────────────────
+    // ── RÚT TIỀN ─────────────────────────────────────────────────────────────
     private void wireWithdrawButton() {
         view.addWithdrawListener(e -> {
             WithdrawView withdrawView = new WithdrawView();
@@ -35,7 +36,7 @@ public class MainMenuController {
         });
     }
 
-    // ── 2. CHUYỂN KHOẢN NỘI BỘ ─────────────────────────────────────────────────
+    // ── CHUYỂN KHOẢN ─────────────────────────────────────────────────────────
     private void wireTransferButton() {
         view.addTransferListener(e -> {
             String accountNumber = utils.SessionManager.getCurrentCard().getAccountNumber();
@@ -54,61 +55,31 @@ public class MainMenuController {
             transferFrame.setResizable(false);
             transferFrame.add(transferView);
 
-            // ĐÃ FIX LỖI MERGE DƯỚI ĐÂY: Thêm sự kiện đóng cửa sổ và hiển thị frame
-            transferFrame.addWindowListener(new WindowAdapter() {
+            // Khi cửa sổ chuyển khoản bị đóng, quay trở lại menu chính
+            transferFrame.addWindowListener(new java.awt.event.WindowAdapter() {
                 @Override
-                public void windowClosing(WindowEvent e) {
-                    view.setVisible(true); // Hiển thị lại Menu chính khi đóng
-                }
-            });
-
-            view.setVisible(false); // Ẩn Menu chính
-            transferFrame.setVisible(true); // Hiện cửa sổ chuyển khoản
-        }); // <-- ĐÃ FIX: Thêm dấu đóng ngoặc }); bị thiếu
-    }
-
-    // ── 3. CHUYỂN KHOẢN LIÊN NGÂN HÀNG ───────────────────────────────────────
-    private void wireInterbankTransferButton() {
-        view.addInterbankTransferListener(e -> {
-            String accountNumber = utils.SessionManager.getCurrentCard().getAccountNumber();
-
-            // Khởi tạo View và Controller cho chức năng Liên ngân hàng
-            InterbankTransferView interbankPanel = new InterbankTransferView(accountNumber);
-            new InterbankTransferController(interbankPanel);
-
-            // Tạo vỏ bọc JFrame
-            JFrame frame = new JFrame("Chuyển khoản liên ngân hàng — ABC Bank");
-            frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-            frame.setSize(900, 540);
-            frame.setLocationRelativeTo(null);
-            frame.setResizable(false);
-            frame.add(interbankPanel);
-
-            // Bắt sự kiện: Khi đóng cửa sổ thì quay về Menu chính
-            frame.addWindowListener(new WindowAdapter() {
-                @Override
-                public void windowClosing(WindowEvent e) {
+                public void windowClosing(java.awt.event.WindowEvent e) {
+                    // Hiển thị lại menu chính nếu người dùng tắt cửa sổ này
                     view.setVisible(true);
                 }
             });
 
-            view.setVisible(false); // Ẩn Menu (Đã xóa dòng lặp thừa)
-            frame.setVisible(true); // Hiện tính năng
+            view.setVisible(false);
         });
     }
 
-    // ── 4. VẤN TIN SỐ DƯ ─────────────────────────────────────────────────────
+    // ── VẤN TIN SỐ DƯ ───────────────────────────────────────────────────────
     private void wireBalanceButton() {
         view.addBalanceListener(e -> {
+
             String accountNumber = utils.SessionManager.getCurrentCard().getAccountNumber();
             DAO.AccountDAO accountDAO = new DAO.AccountDAO();
             models.Account account = accountDAO.getAccountByNumber(accountNumber);
-
             if (account != null) {
                 java.text.DecimalFormat fmt = new java.text.DecimalFormat("#,###");
                 JOptionPane.showMessageDialog(view,
                         "Số tài khoản: " + accountNumber + "\n" +
-                                "Số dư khả dụng: " + fmt.format(account.getBalance()) + " VNĐ",
+                        "Số dư khả dụng: " + fmt.format(account.getBalance()) + " VNĐ",
                         "Vấn tin số dư", JOptionPane.INFORMATION_MESSAGE);
             } else {
                 JOptionPane.showMessageDialog(view, "Không thể truy vấn số dư!",
@@ -117,21 +88,23 @@ public class MainMenuController {
         });
     }
 
-    // ── 5. ĐỔI MÃ PIN ──────────────────────────────────────────────────────────
+    // ── ĐỔI MÃ PIN ──────────────────────────────────────────────────────────
     private void wireChangePinButton() {
         view.addChangePinListener(e -> {
-            JOptionPane.showMessageDialog(view,
-                    "Tính năng đổi mã PIN đang được phát triển.",
-                    "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+            ChangePINView changePinView = new ChangePINView();
+            new ChangePINController(changePinView);
+            changePinView.setVisible(true);
         });
     }
 
-    // ── 6. IN SAO KÊ ──────────────────────────────────────────────────────────
+    // ── IN SAO KÊ ────────────────────────────────────────────────────────────
     private void wireHistoryButton() {
         view.addTransactionHistoryListener(e -> {
-            JOptionPane.showMessageDialog(view,
-                    "Tính năng in sao kê đang được phát triển.",
-                    "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+            TransactionHistoryView historyView = new TransactionHistoryView();
+            new TransactionHistoryController(historyView);
+            historyView.setVisible(true);
         });
     }
+
+
 }
